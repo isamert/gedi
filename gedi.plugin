@@ -1,0 +1,9 @@
+[Plugin]
+Loader=python3
+Module=gedi
+IAge=3
+Name=Gedi
+Description=Python code completion plugin
+Authors=İsa Mert Gürbüz
+Copyright=İsa Mert Gürbüz
+Website=http://www.isamert.net
