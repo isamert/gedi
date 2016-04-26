@@ -5,6 +5,14 @@ import subprocess
 from jedi.api import Script
 from gi.repository import GObject, Gedit, Gtk, GtkSource
 
+#FIXME: find real icon names
+icon_names = {'import': '',
+              'module': '',
+              'class': '',
+              'function': '',
+              'statement': '',
+              'param': ''}
+
 class Jedi:
     def get_script(document):
         doc_text = document.get_text(document.get_start_iter(), document.get_end_iter(), False)
@@ -77,29 +85,26 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
         _, it = context.get_iter()
         document = it.get_buffer()
         proposals = []
-
+        
         for completion in Jedi.get_script(document).completions():
+            complete = completion.name
             proposals.append(GtkSource.CompletionItem.new(completion.name,
                                                             completion.name,
-                                                            self.get_icon_for_type(completion.type.lower()),
+                                                            self.get_icon_for_type(completion.type),
                                                             completion.docstring()))
+
 
         context.add_proposals(self, proposals, True)
 
     def get_icon_for_type(self, _type):
-        #FIXME: find real icon names
-        icon_names = {'import': '',
-                      'module': '',
-                      'class': '',
-                      'function': '',
-                      'statement': '',
-                      'param': ''}
-
         theme = Gtk.IconTheme.get_default()
         try:
-            return theme.load_icon(icon_names[_type], 16, 0)
+            return theme.load_icon(icon_names[_type.lower()], 16, 0)
         except:
-            return theme.load_icon(Gtk.STOCK_ADD, 16, 0)
+            try:
+                return theme.load_icon(Gtk.STOCK_ADD, 16, 0)
+            except:
+                return None
 
 
 GObject.type_register(GediCompletionProvider)
