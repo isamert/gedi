@@ -29,5 +29,5 @@ $ git clone https://github.com/isamert/gedi.git
 For updating:
 ```
 $ cd ~/.local/share/gedit/plugins/gedi
-$ git update
+$ git pull
 ```
