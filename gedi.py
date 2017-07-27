@@ -63,10 +63,16 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
 
     def do_get_name(self):
         return _("Gedi Python Code Completion")
+    
+    def get_iter_correctly(self, context):
+        if isinstance(context.get_iter(), tuple):
+            return context.get_iter()[1];
+        else:
+            return context.get_iter()
 
     def do_match(self, context):
         #FIXME: check for strings and comments
-        _, iter = context.get_iter()
+        iter = self.get_iter_correctly(context)
         iter.backward_char()
         ch = iter.get_char()
         if not (ch in ('_', '.') or ch.isalnum()):
@@ -82,7 +88,7 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
 
     def do_populate(self, context):
         #TODO: do async maybe?
-        _, it = context.get_iter()
+        it = self.get_iter_correctly(context)
         document = it.get_buffer()
         proposals = []
         
