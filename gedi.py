@@ -44,7 +44,7 @@ class GediPlugin(GObject.Object, Gedit.ViewActivatable):
     def do_deactivate(self):
         print("Gedi is deactivated.")
 
-    def on_document_load(self, document):
+    def on_document_load(self, document, p3=None, p4=None, p5=0, p6=0):
         if document.get_uri_for_display().endswith(self.py_extension):
             if self.completion_provider is None:
                 self.completion_provider = GediCompletionProvider()
