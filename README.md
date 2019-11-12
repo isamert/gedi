@@ -11,7 +11,7 @@ A python code completion plugin for gedit. Built with the Jedi auto completion l
 - Some refactoring tools
 
 ## Using
-- Firstly, you need to install jedi. You can install it from your distro's package manager(search for python-jedi) or you can install it with pip:
+- Firstly, you need to install jedi. You can install it from your distro's package manager(search for python3-jedi) or you can install it with pip:
 ```
 pip install jedi
 ```
