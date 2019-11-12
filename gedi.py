@@ -94,10 +94,14 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
         
         for completion in Jedi.get_script(document).completions():
             complete = completion.name
+            if jedi.__version__ <= (0,7,0):
+                doc=completion.doc
+            else:
+                doc=completion.docstring()
             proposals.append(GtkSource.CompletionItem.new(completion.name,
                                                             completion.name,
                                                             self.get_icon_for_type(completion.type),
-                                                            completion.docstring()))
+                                                            doc))
 
 
         context.add_proposals(self, proposals, True)
