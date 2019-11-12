@@ -35,7 +35,7 @@ class GediPlugin(GObject.Object, Gedit.ViewActivatable):
     def do_activate(self):
         print("Gedi is activated.")
         document = self.view.get_buffer()
-        document.connect("load", self.on_document_load)
+        document.connect("loaded", self.on_document_load)
 
         if document.get_uri_for_display().endswith(self.py_extension):
             self.completion_provider = GediCompletionProvider()
