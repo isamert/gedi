@@ -71,9 +71,11 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
             return context.get_iter()
 
     def do_match(self, context):
-        #FIXME: check for strings and comments
         iter = self.get_iter_correctly(context)
         iter.backward_char()
+        buffer=iter.get_buffer()
+        if buffer.get_context_classes_at_iter(iter) != ['no-spell-check']:
+            return False
         ch = iter.get_char()
         if not (ch in ('_', '.') or ch.isalnum()):
             return False
