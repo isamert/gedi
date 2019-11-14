@@ -35,7 +35,7 @@ class GediPlugin(GObject.Object, Gedit.ViewActivatable):
     def do_activate(self):
         print("Gedi is activated.")
         document = self.view.get_buffer()
-        document.connect("load", self.on_document_load)
+        document.connect("loaded", self.on_document_load)
 
         if document.get_uri_for_display().endswith(self.py_extension):
             self.completion_provider = GediCompletionProvider()
@@ -44,7 +44,7 @@ class GediPlugin(GObject.Object, Gedit.ViewActivatable):
     def do_deactivate(self):
         print("Gedi is deactivated.")
 
-    def on_document_load(self, document):
+    def on_document_load(self, document, p3=None, p4=None, p5=0, p6=0):
         if document.get_uri_for_display().endswith(self.py_extension):
             if self.completion_provider is None:
                 self.completion_provider = GediCompletionProvider()
@@ -71,9 +71,11 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
             return context.get_iter()
 
     def do_match(self, context):
-        #FIXME: check for strings and comments
         iter = self.get_iter_correctly(context)
         iter.backward_char()
+        buffer=iter.get_buffer()
+        if buffer.get_context_classes_at_iter(iter) != ['no-spell-check']:
+            return False
         ch = iter.get_char()
         if not (ch in ('_', '.') or ch.isalnum()):
             return False
@@ -94,10 +96,14 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
         
         for completion in Jedi.get_script(document).completions():
             complete = completion.name
+            if jedi.__version__ <= (0,7,0):
+                doc=completion.doc
+            else:
+                doc=completion.docstring()
             proposals.append(GtkSource.CompletionItem.new(completion.name,
                                                             completion.name,
                                                             self.get_icon_for_type(completion.type),
-                                                            completion.docstring()))
+                                                            doc))
 
 
         context.add_proposals(self, proposals, True)
