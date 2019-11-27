@@ -1,8 +1,8 @@
 import os
 import tempfile
 import subprocess
+import jedi
 
-from jedi.api import Script
 from gi.repository import GObject, Gedit, Gtk, GtkSource
 
 #FIXME: find real icon names
@@ -20,7 +20,7 @@ class Jedi:
         linenum = iter_cursor.get_line() + 1
         charnum = iter_cursor.get_line_index()
 
-        return Script(doc_text, linenum, charnum, document.get_uri_for_display())
+        return jedi.api.Script(doc_text, linenum, charnum, document.get_uri_for_display())
 
 
 class GediPlugin(GObject.Object, Gedit.ViewActivatable):
