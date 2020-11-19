@@ -1,6 +1,7 @@
 import os
 import tempfile
 import subprocess
+import jedi
 
 from jedi.api import Script
 from gi.repository import GObject, Gedit, Gtk, GtkSource
@@ -63,7 +64,7 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
 
     def do_get_name(self):
         return _("Gedi Python Code Completion")
-    
+
     def get_iter_correctly(self, context):
         if isinstance(context.get_iter(), tuple):
             return context.get_iter()[1];
@@ -93,17 +94,18 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
         it = self.get_iter_correctly(context)
         document = it.get_buffer()
         proposals = []
-        
+
         for completion in Jedi.get_script(document).completions():
             complete = completion.name
-            if jedi.__version__ <= (0,7,0):
+            if tuple(int(n) for n in jedi.__version__.split('.'))<= (0,7,0):
                 doc=completion.doc
             else:
                 doc=completion.docstring()
-            proposals.append(GtkSource.CompletionItem.new(completion.name,
-                                                            completion.name,
-                                                            self.get_icon_for_type(completion.type),
-                                                            doc))
+            comp = GtkSource.CompletionItem.new()
+            comp.props.label = comp.props.text = completion.name
+            comp.props.icon = self.get_icon_for_type(completion.type)
+            comp.props.info = doc
+            proposals.append(comp)
 
 
         context.add_proposals(self, proposals, True)
