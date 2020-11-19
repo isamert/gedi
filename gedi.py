@@ -4,7 +4,8 @@ import subprocess
 import jedi
 
 from jedi.api import Script
-from gi.repository import GObject, Gedit, Gtk, GtkSource
+from gi.repository import GObject, Gedit, Gtk, GtkSource, GLib
+from threading import Thread, Event
 
 #FIXME: find real icon names
 icon_names = {'import': '',
@@ -56,12 +57,57 @@ class GediPlugin(GObject.Object, Gedit.ViewActivatable):
                 self.completion_provider = None
 
 
+def get_icon_for_type(_type):
+    theme = Gtk.IconTheme.get_default()
+    try:
+        return theme.load_icon(icon_names[_type.lower()], 16, 0)
+    except:
+        try:
+            return theme.load_icon(Gtk.STOCK_ADD, 16, 0)
+        except:
+            return None
+
+class JediPopulator(Thread):
+    def __init__(self, provider, context):
+        Thread.__init__(self)
+        self._context = context
+        self._provider = provider
+        self._document = provider.get_iter_correctly(context).get_buffer()
+        self._stop_request = Event()
+
+    def run(self):
+        proposals = []
+        try:
+            for completion in Jedi.get_script(self._document).completions():
+                complete = completion.name
+                if tuple(int(n) for n in jedi.__version__.split('.'))<= (0,7,0):
+                    doc=completion.doc
+                else:
+                    doc=completion.docstring()
+
+                comp = GtkSource.CompletionItem.new()
+                comp.props.label = comp.props.text = completion.name
+                #comp.props.icon = get_icon_for_type(completion.type)
+                comp.props.info = doc
+                proposals.append(comp)
+        except Exception:
+            self.stop()
+
+        if not self._stop_request.is_set():
+            GLib.idle_add(self._context.add_proposals, self._provider, proposals, True)
+
+    def stop(self):
+            self._stop_request.set()
+    @property
+    def stopped(self):
+        return self._stop_request.is_set()
+
 class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
     __gtype_name__ = 'GediProvider'
 
     def __init__(self):
         GObject.Object.__init__(self)
-
+        self.thread = None
     def do_get_name(self):
         return _("Gedi Python Code Completion")
 
@@ -90,35 +136,10 @@ class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
         return GtkSource.CompletionActivation.INTERACTIVE
 
     def do_populate(self, context):
-        #TODO: do async maybe?
-        it = self.get_iter_correctly(context)
-        document = it.get_buffer()
-        proposals = []
-
-        for completion in Jedi.get_script(document).completions():
-            complete = completion.name
-            if tuple(int(n) for n in jedi.__version__.split('.'))<= (0,7,0):
-                doc=completion.doc
-            else:
-                doc=completion.docstring()
-            comp = GtkSource.CompletionItem.new()
-            comp.props.label = comp.props.text = completion.name
-            comp.props.icon = self.get_icon_for_type(completion.type)
-            comp.props.info = doc
-            proposals.append(comp)
-
-
-        context.add_proposals(self, proposals, True)
-
-    def get_icon_for_type(self, _type):
-        theme = Gtk.IconTheme.get_default()
-        try:
-            return theme.load_icon(icon_names[_type.lower()], 16, 0)
-        except:
-            try:
-                return theme.load_icon(Gtk.STOCK_ADD, 16, 0)
-            except:
-                return None
+        if self.thread and not self.thread.stopped:
+            self.thread.stop()
+        self.thread = JediPopulator(self, context)
+        self.thread.start()
 
 
 GObject.type_register(GediCompletionProvider)
