@@ -75,7 +75,7 @@ class JediPopulator(Thread):
         try:
             for completion in Jedi.get_script(self._document).completions():
                 complete = completion.name
-                if tuple(int(n) for n in jedi.__version__.split('.')) <= (0, 7, 0):
+                if tuple(map(int,jedi.__version__.split('.'))) <= (0, 7, 0):
                     doc = completion.doc
                 else:
                     doc = completion.docstring()
