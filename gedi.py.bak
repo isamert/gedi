@@ -1,0 +1,104 @@
+#!/usr/bin/env python3
+
+import os, tempfile, subprocess
+from jedi.api import Script
+from gi.repository import Gtk, Gedit, GObject, GtkSource
+
+# FIXME: find real icon names
+icon_names = {
+	'import': '',
+	'module': '',
+	'class': '',
+	'function': '',
+	'statement': '',
+	'param': '',
+}
+
+class Jedi:
+	def get_script(document):
+		doc_text = document.get_text(document.get_start_iter(), document.get_end_iter(), False)
+		loc = document.get_file().get_location()
+
+		return Script(code=doc_text, path=loc.get_path() if (loc) else '')
+
+class GediPlugin(GObject.Object, Gedit.ViewActivatable):
+	__gtype_name__ = 'GediPlugin'
+
+	view = GObject.property(type=Gedit.View)
+
+	def __init__(self):
+		super().__init__()
+		self.completion_provider = None
+
+	def do_activate(self):
+		print("Gedi is activated.")
+
+		document = self.view.get_buffer()
+		document.connect("loaded", self.on_document_load)
+
+		if ((lang := document.get_language()) and 'python' in lang.get_name().casefold()):
+			self.completion_provider = GediCompletionProvider()
+			self.view.get_completion().add_provider(self.completion_provider)
+
+	def do_deactivate(self):
+		print("Gedi is deactivated.")
+
+	def on_document_load(self, document, p3=None, p4=None, p5=0, p6=0):
+		if ((lang := document.get_language()) and 'python' in lang.get_name().casefold()):
+			if (self.completion_provider is None):
+				self.completion_provider = GediCompletionProvider()
+				self.view.get_completion().add_provider(self.completion_provider)
+		else:
+			if (self.completion_provider is not None):
+				self.view.get_completion().remove_provider(self.completion_provider)
+				self.completion_provider = None
+
+@GObject.type_register
+class GediCompletionProvider(GObject.Object, GtkSource.CompletionProvider):
+	__gtype_name__ = 'GediProvider'
+
+	def __init__(self):
+		super().__init__()
+
+	def do_get_name(self):
+		return _("Gedi Python Code Completion")
+
+	def get_iter_correctly(self, context):
+		return (context.get_iter()[1] if (isinstance(context.get_iter(), tuple)) else context.get_iter())
+
+	def do_match(self, context):
+		iter = self.get_iter_correctly(context)
+		iter.backward_char()
+		buffer = iter.get_buffer()
+		if (buffer.get_context_classes_at_iter(iter) != ['no-spell-check']): return False
+		ch = iter.get_char()
+		return (ch in ('_', '.') or ch.isalnum())
+
+	def do_get_priority(self):
+		return 1
+
+	def do_get_activation(self):
+		return GtkSource.CompletionActivation.INTERACTIVE
+
+	def do_populate(self, context): # TODO: do async maybe?
+		it = self.get_iter_correctly(context)
+		document = it.get_buffer()
+		proposals = []
+
+		iter_cursor = document.get_iter_at_mark(document.get_insert())
+		linenum = iter_cursor.get_line() + 1
+		charnum = iter_cursor.get_line_index()
+
+		for completion in Jedi.get_script(document).complete(linenum, charnum):
+			complete = completion.name
+			doc = completion.docstring()
+			proposals.append(GtkSource.CompletionItem(label=completion.name, text=completion.name, icon=self.get_icon_for_type(completion.type), info=doc))
+
+		context.add_proposals(self, proposals, True)
+
+	def get_icon_for_type(self, _type):
+		theme = Gtk.IconTheme.get_default()
+		try: return theme.load_icon(icon_names[_type.lower()], 16, 0)
+		except Exception:
+			try: return theme.load_icon(Gtk.STOCK_ADD, 16, 0)
+			except Exception: return None
